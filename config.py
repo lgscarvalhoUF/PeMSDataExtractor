@@ -92,10 +92,7 @@ options={
     "time_zone": 'America/Tijuana',
 #    "time_correction":18000, #due t1o local time issues
    #--------------------
-   # Capacity Analysis Parameters
-	"SpeedLimQuantile":0.9,
-	'SpeedDropTreshold':0.15,
-	'CapacityAdoptPercentile':0.85,
+
 }
 
 
