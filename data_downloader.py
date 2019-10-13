@@ -15,6 +15,7 @@ import shutil #used with os to deal with folders and files
 import glob #used to access specific information regarding file storage 
 import pandas as pd #used to work with sheet-like structures
 import random #provides several randomizing operations
+import math
 #import sys
 
 #if config.invalidflag == 1:
@@ -258,14 +259,19 @@ if __name__ == "__main__":
                     mustend = time.time() + timeout
                 if errorcount != 2:
 #                    print('checking website info')
-                    if config.options['pems_state'] == 'VA': 
-                        weblink = descript_table.at[2,'Aggregates>Time Series']
-#                        print(weblink)
-                        
-                    elif config.options['pems_state'] == 'UT': 
-                        weblink = descript_table.at[2,'Aggregates>Time Series']
-                    else: 
-                        weblink = descript_table.at[0,'Aggregates>Time Series']
+#                    if config.options['pems_state'] == 'VA': 
+#                        weblink = descript_table.at[2,'Aggregates>Time Series']
+##                        print(weblink)
+#                        
+#                    elif config.options['pems_state'] == 'UT': 
+#                        weblink = descript_table.at[2,'Aggregates>Time Series']
+#                    else: 
+#                        weblink = descript_table.at[0,'Aggregates>Time Series']
+                    for i in range(0,len(descript_table)):
+                        if type(descript_table.at[i,'Aggregates>Time Series']) is str:
+                            if descript_table.at[i,'Aggregates>Time Series'][0:4] == 'http':
+                                weblink = descript_table.at[i,'Aggregates>Time Series']
+                    
                     variables=weblink.split('&')
                     #checking each variable
                     

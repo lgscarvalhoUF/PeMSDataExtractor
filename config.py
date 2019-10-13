@@ -71,10 +71,10 @@ options={
     #Sensor list setup:     
     'draw_number': 10,
     'draw_opt': 'random',    
-    "number_of_lanes":3, 
+    "number_of_lanes":2, 
     'segmenttype':'Weaving',
 #    "sensor_list":[500014082],
-    "project_sensor_id":98,
+    "project_sensor_id":106,
 #    "upstream_detector":1000500,
     #--------------------
     #Data treatment setup

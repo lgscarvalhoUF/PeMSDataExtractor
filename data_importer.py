@@ -39,7 +39,7 @@ partialoutpath = (config.options['treated_files_dir'] +'\\' +config.options['seg
 
 
 sensor_download_list = config.options['sensor_list']
-number_of_lanes = config.options['number_of_lanes']
+number_of_lanes = int(config.options['number_of_lanes'])
 if __name__ == "__main__":
 
     if config.options['segmenttype'] == 'Basic':
@@ -442,30 +442,35 @@ if __name__ == "__main__":
                             df.loc[i, 'interv'] = ((df.loc[i, 'time'] -df.loc[i-1, 'time']).value)/60/10e8
                             
                         #aggregating in 15 minutes intervals
-                        totalrows = len(df)/3
-                #        print(totalrows)
-                        dfag = pd.DataFrame()
-                        for tagreg in range(0,int(totalrows)):
-                #            print((tagreg * 3),(tagreg *3 +3))
-                            dftemp = df[(tagreg * 3):(tagreg *3 +3)]
-                            dfag.loc[tagreg,'tini'] = df.loc[tagreg*3,'time']
-                            dfag.loc[tagreg,'tend'] = df.loc[(tagreg*3+2),'time']
-                            
-                            
-                            for lane in range(1,number_of_lanes+1):
-                                column = 'L%iVolume'%lane
-                                dfag.loc[tagreg,column] = dftemp[column].sum()
-                            
-                            for lane in range(1,number_of_lanes+1):
-                                column = 'L%iSpeed'%lane
-                                dfag.loc[tagreg,column] = dftemp[column].mean()
+                        if config.detectorinfo.loc[config.detectorinfo['Number'] == (config.options["project_sensor_id"]),"Aggreg15min"].iloc[0] != 'Yes':
+
+                            totalrows = len(df)/3
+                    #        print(totalrows)
+                            dfag = pd.DataFrame()
+                            for tagreg in range(0,int(totalrows)):
+                    #            print((tagreg * 3),(tagreg *3 +3))
+                                dftemp = df[(tagreg * 3):(tagreg *3 +3)]
+                                dfag.loc[tagreg,'tini'] = df.loc[tagreg*3,'time']
+                                dfag.loc[tagreg,'tend'] = df.loc[(tagreg*3+2),'time']
+                                
+                                
+                                for lane in range(1,number_of_lanes+1):
+                                    column = 'L%iVolume'%lane
+                                    dfag.loc[tagreg,column] = dftemp[column].sum()
+                                
+                                for lane in range(1,number_of_lanes+1):
+                                    column = 'L%iSpeed'%lane
+                                    dfag.loc[tagreg,column] = dftemp[column].mean()
+                    
+                                
+                                dfag.loc[tagreg,'% Observed'] = dftemp['% Observed'].mean()
+                                dfag.loc[tagreg,'interv'] = dftemp['interv'].sum()
+                                dfag.loc[tagreg,'Volume15min'] = dftemp['TotalVolume'].sum()
+                                dfag.loc[tagreg,'AvgSpeed'] = dftemp['AvgSpeed'].mean()
                 
+                        else:
+                            dfag = copy.deepcopy(df)
                             
-                            dfag.loc[tagreg,'% Observed'] = dftemp['% Observed'].mean()
-                            dfag.loc[tagreg,'interv'] = dftemp['interv'].sum()
-                            dfag.loc[tagreg,'Volume15min'] = dftemp['TotalVolume'].sum()
-                            dfag.loc[tagreg,'AvgSpeed'] = dftemp['AvgSpeed'].mean()
-                
                         dfsensor=dfsensor.append(dfag, ignore_index=True)
                         
                 #    dfsensor['tperc']=dfsensor['TFlow']/dfsensor['AFlow']
@@ -503,97 +508,112 @@ if __name__ == "__main__":
                     
 #                    number_of_lanes = int(config.detectorinfo.loc[config.detectorinfo['Number'] == (config.options["project_sensor_id"]),'# Ramp Lanes'].iloc[0])
 
-                    dfsensor = pd.DataFrame()
-                    dirpath = (ddir +'\\' + lanefolder + '\\' + str(config.options['project_sensor_id']).rjust(3,'0') + '\\' + str(stationnumber))
-                    
-                    for i,j in zip(starttimes,endtimes):
-                    
-                        gi=time.gmtime(i)
-                        ge=time.gmtime(j)
-                    
-                        filename = '%s_%i_%s%s%s%s%s_%s%s%s%s%s.xlsx' %(
-                                                                str(config.options['project_sensor_id']).rjust(3,'0'),
-                                                                stationnumber,
-                                                                str(gi[0]).rjust(2,'0'),
-                                                                str(gi[1]).rjust(2,'0'),
-                                                                str(gi[2]).rjust(2,'0'),
-                                                                str(gi[3]).rjust(2,'0'),
-                                                                str(gi[4]).rjust(2,'0'),
-                                                                str(ge[0]).rjust(2,'0'),
-                                                                str(ge[1]).rjust(2,'0'),
-                                                                str(ge[2]).rjust(2,'0'),
-                                                                str(ge[3]).rjust(2,'0'),
-                                                                str(ge[4]).rjust(2,'0')
-                                                                )
-                
-                #    for file in next(os.walk(dirpath))[2]:
-                        df = pd.read_excel(os.path.join(dirpath,filename))
-                        df=df.drop(['# Lane Points',
-                                    ],axis=1)
-                        collist = []
-                #        collist.append('index')
-                        collist.append('time')
-                        for i in range(1,number_of_lanes+1):
-                            collist.append('L%iVolume'%i)
-#                            collist.append('L%iSpeed'%i)
-                        collist.append('TotalVolume')
-#                        collist.append('AvgSpeed')
-                        collist.append('% Observed')
-                        df.columns=collist
+                        dfsensor = pd.DataFrame()
+                        dirpath = (ddir +'\\' + lanefolder + '\\' + str(config.options['project_sensor_id']).rjust(3,'0') + '\\' + str(stationnumber))
                         
-                        df['time'] = pd.to_datetime(df['time'])
+                        for i,j in zip(starttimes,endtimes):
                         
-                        df.loc[0,'interv'] =5
-                        for i in range(1,len(df)):
-                            df.loc[i, 'interv'] = ((df.loc[i, 'time'] -df.loc[i-1, 'time']).value)/60/10e8
-                            
-                        #aggregating in 15 minutes intervals
-                        totalrows = len(df)/3
-                #        print(totalrows)
-                        dfag = pd.DataFrame()
-                        for tagreg in range(0,int(totalrows)):
-                #            print((tagreg * 3),(tagreg *3 +3))
-                            dftemp = df[(tagreg * 3):(tagreg *3 +3)]
-                            dfag.loc[tagreg,'tini'] = df.loc[tagreg*3,'time']
-                            dfag.loc[tagreg,'tend'] = df.loc[(tagreg*3+2),'time']
-                            
-                            
-                            for lane in range(1,number_of_lanes+1):
-                                column = 'L%iVolume'%lane
-                                dfag.loc[tagreg,column] = dftemp[column].sum()
-                            
-#                            for lane in range(1,number_of_lanes+1):
-#                                column = 'L%iSpeed'%lane
-#                                dfag.loc[tagreg,column] = dftemp[column].mean()
-                
-                            
-                            dfag.loc[tagreg,'% Observed'] = dftemp['% Observed'].mean()
-                            dfag.loc[tagreg,'interv'] = dftemp['interv'].sum()
-                            dfag.loc[tagreg,'Volume15min'] = dftemp['TotalVolume'].sum()
-#                            dfag.loc[tagreg,'AvgSpeed'] = dftemp['AvgSpeed'].mean()
-                
-                        dfsensor=dfsensor.append(dfag, ignore_index=True)
+                            gi=time.gmtime(i)
+                            ge=time.gmtime(j)
                         
-                #    dfsensor['tperc']=dfsensor['TFlow']/dfsensor['AFlow']
+                            filename = '%s_%i_%s%s%s%s%s_%s%s%s%s%s.xlsx' %(
+                                                                    str(config.options['project_sensor_id']).rjust(3,'0'),
+                                                                    stationnumber,
+                                                                    str(gi[0]).rjust(2,'0'),
+                                                                    str(gi[1]).rjust(2,'0'),
+                                                                    str(gi[2]).rjust(2,'0'),
+                                                                    str(gi[3]).rjust(2,'0'),
+                                                                    str(gi[4]).rjust(2,'0'),
+                                                                    str(ge[0]).rjust(2,'0'),
+                                                                    str(ge[1]).rjust(2,'0'),
+                                                                    str(ge[2]).rjust(2,'0'),
+                                                                    str(ge[3]).rjust(2,'0'),
+                                                                    str(ge[4]).rjust(2,'0')
+                                                                    )
+                    
+                    #    for file in next(os.walk(dirpath))[2]:
+                            df = pd.read_excel(os.path.join(dirpath,filename))
+                            df=df.drop(['# Lane Points',
+                                        ],axis=1)
+                            collist = []
+                    #        collist.append('index')
+                            collist.append('time')
+                            for i in range(1,number_of_lanes+1):
+                                collist.append('L%iVolume'%i)
+    #                            collist.append('L%iSpeed'%i)
+                            collist.append('TotalVolume')
+    #                        collist.append('AvgSpeed')
+                            collist.append('% Observed')
+                            df.columns=collist
+                            
+                            df['time'] = pd.to_datetime(df['time'])
+                            
+                            df.loc[0,'interv'] =5
+                            for i in range(1,len(df)):
+                                df.loc[i, 'interv'] = ((df.loc[i, 'time'] -df.loc[i-1, 'time']).value)/60/10e8
+                                
+                            #aggregating in 15 minutes intervals
+                            if config.detectorinfo.loc[config.detectorinfo['Number'] == (config.options["project_sensor_id"]),"Aggreg15min"].iloc[0] != 'Yes':
+    
+                            
+                                totalrows = len(df)/3
+                        #        print(totalrows)
+                                dfag = pd.DataFrame()
+                                for tagreg in range(0,int(totalrows)):
+                        #            print((tagreg * 3),(tagreg *3 +3))
+                                    dftemp = df[(tagreg * 3):(tagreg *3 +3)]
+                                    dfag.loc[tagreg,'tini'] = df.loc[tagreg*3,'time']
+                                    dfag.loc[tagreg,'tend'] = df.loc[(tagreg*3+2),'time']
+                                    
+                                    
+                                    for lane in range(1,number_of_lanes+1):
+                                        column = 'L%iVolume'%lane
+                                        dfag.loc[tagreg,column] = dftemp[column].sum()
+                                    
+        #                            for lane in range(1,number_of_lanes+1):
+        #                                column = 'L%iSpeed'%lane
+        #                                dfag.loc[tagreg,column] = dftemp[column].mean()
+                        
+                                    
+                                    dfag.loc[tagreg,'% Observed'] = dftemp['% Observed'].mean()
+                                    dfag.loc[tagreg,'interv'] = dftemp['interv'].sum()
+                                    dfag.loc[tagreg,'Volume15min'] = dftemp['TotalVolume'].sum()
+    #                            dfag.loc[tagreg,'AvgSpeed'] = dftemp['AvgSpeed'].mean()
+                            else:
+                                dfag = copy.deepcopy(df)
+                                
+                            dfsensor=dfsensor.append(dfag, ignore_index=True)
+                            
+                    #    dfsensor['tperc']=dfsensor['TFlow']/dfsensor['AFlow']
+                        
+                        
+                        
+                    #    fig=plt.figure(figsize=(8,5))
+                        for i in range(1,number_of_lanes+1): 
+                            dfsensor['L%iRatio'%i]=dfsensor['L%iVolume'%i]/dfsensor['Volume15min']
+                            dfsensor['L%ihourFlow'%i]=dfsensor['L%iVolume'%i]*4
+                    #Calculating density
+    #                        dfsensor['L%iDensity'%i] = dfsensor['L%ihourFlow'%i]/dfsensor['L%iSpeed'%i]
+                        
+    #                    dfsensor['Density'] = dfsensor['Volume15min']*4/dfsensor['AvgSpeed']
+                        dfsensor['Flow_vph'] = dfsensor['Volume15min']*4
+                        treated_df[stationnumber] = copy.deepcopy(dfsensor)
+    
+                        output = open(outpath+'\\treated_%i.pkl' %stationnumber, 'wb')
+                        pickle.dump(treated_df[stationnumber], output)
+                        output.close()
+                         
+                        treated_df[stationnumber].to_excel(outpath+'\\treated_%i.xlsx' %stationnumber)
+                        
+                        
+                        
                     
                     
                     
-                #    fig=plt.figure(figsize=(8,5))
-                    for i in range(1,number_of_lanes+1): 
-                        dfsensor['L%iRatio'%i]=dfsensor['L%iVolume'%i]/dfsensor['Volume15min']
-                        dfsensor['L%ihourFlow'%i]=dfsensor['L%iVolume'%i]*4
-                #Calculating density
-#                        dfsensor['L%iDensity'%i] = dfsensor['L%ihourFlow'%i]/dfsensor['L%iSpeed'%i]
                     
-#                    dfsensor['Density'] = dfsensor['Volume15min']*4/dfsensor['AvgSpeed']
-                    dfsensor['Flow_vph'] = dfsensor['Volume15min']*4
-                    treated_df[stationnumber] = copy.deepcopy(dfsensor)
-
-                    output = open(outpath+'\\treated_%i.pkl' %stationnumber, 'wb')
-                    pickle.dump(treated_df[stationnumber], output)
-                    output.close()
-                     
-                    treated_df[stationnumber].to_excel(outpath+'\\treated_%i.xlsx' %stationnumber)
+                    
+                    
+                    
                     
         if config.invalidflag == 1:
             if config.options["pems_state"] in ['MN','WI','FL']:
@@ -605,161 +625,340 @@ if __name__ == "__main__":
                     customrange = range(0,len(sensor_download_list))
                 
                 for dlistid in customrange:
-                    print(dlistid)
                     stationnumber = sensor_download_list[dlistid]
-                    if dlistid < 2:
-                        number_of_lanes = config.detectorinfo.loc[config.detectorinfo['Number'] == (config.options["project_sensor_id"]),'# Lanes'].iloc[0]
-                    else:
-                        number_of_lanes = config.detectorinfo.loc[config.detectorinfo['Number'] == (config.options["project_sensor_id"]),'# Ramp Lanes'].iloc[0]
-                                                              
-                
-                
-#                stationnumber = config.options['sensor_list'][0]
-                
+                    
                     outpath =  partialoutpath+str(config.options['project_sensor_id']).rjust(3,'0') + '\\' + str(stationnumber)
+        
                     dirpath = (ddir +'\\' + lanefolder + '\\' + str(config.options['project_sensor_id']).rjust(3,'0') + '\\' + str(stationnumber))
-            
-            
+                    
                     os.makedirs(outpath,exist_ok=True)
-                    treated_df=dict()
-            
-            #    for file in next(os.walk(dirpath))[2]:
-                    dfsensor = pd.read_excel(os.path.join(dirpath,next(os.walk(dirpath))[2][0]))
+    
+                
+                    if dlistid < 2:
+                        number_of_lanes = int(config.detectorinfo.loc[config.detectorinfo['Number'] == (config.options["project_sensor_id"]),'# Lanes'].iloc[0])
+    
+    
                     
-        #            dfsensor=dfsensor.drop(['# Lane Points',
-        #                        ],axis=1)
-                    collist = []
-            #        collist.append('index')
-                    collist.append('time')
-                    for i in range(1,number_of_lanes+1):
-                        collist.append('L%iVolume'%i)
-                        collist.append('L%iSpeed'%i)
-                    collist.append('Volume15min')
-                    collist.append('AvgSpeed')
-        #            collist.append('% Observed')
-                    dfsensor.columns=collist
+                        outpath =  partialoutpath+str(config.options['project_sensor_id']).rjust(3,'0') + '\\' + str(stationnumber)
+                        dirpath = (ddir +'\\' + lanefolder + '\\' + str(config.options['project_sensor_id']).rjust(3,'0') + '\\' + str(stationnumber))
+                
+                
+                        os.makedirs(outpath,exist_ok=True)
+                        treated_df=dict()
+                
+                #    for file in next(os.walk(dirpath))[2]:
+                        dfsensor = pd.read_excel(os.path.join(dirpath,next(os.walk(dirpath))[2][0]))
+                        
+            #            dfsensor=dfsensor.drop(['# Lane Points',
+            #                        ],axis=1)
+                        collist = []
+                #        collist.append('index')
+                        collist.append('time')
+                        
+                        for i in range(1,number_of_lanes+1):
+                            collist.append('L%iVolume'%i)
+                            collist.append('L%iSpeed'%i)
+                        collist.append('Volume15min')
+                        collist.append('AvgSpeed')
+            #            collist.append('% Observed')
+                        dfsensor.columns=collist
+                                
+                        dfsensor['time'] = pd.to_datetime(dfsensor['time'])
+                
+                
+                #        dfsensor = dfsensor.rename(index=str, columns={"Date": "time"})
+                        
+                        dfsensor['time'] = pd.to_datetime(dfsensor['time'])
+                
+                #        dropping invalid data
+                        dfsensor = dfsensor.drop(dfsensor[dfsensor.Volume15min < 0].index,axis=0)
+                        dfsensor = dfsensor.drop(dfsensor[dfsensor.AvgSpeed < 0].index,axis=0)
+                #L1Volume	L1Speed	L2Volume	L2Speed	Volume15min	AvgSpeed
+                        for lane in range(1,number_of_lanes+1):
+                            dfsensor = dfsensor.drop(dfsensor[dfsensor['L%iSpeed' %lane] > 85].index,axis=0)
+                            dfsensor = dfsensor.drop(dfsensor[dfsensor['L%iSpeed' %lane] < 0].index,axis=0)
                             
-                    dfsensor['time'] = pd.to_datetime(dfsensor['time'])
-            
-            
-            #        dfsensor = dfsensor.rename(index=str, columns={"Date": "time"})
-                    
-                    dfsensor['time'] = pd.to_datetime(dfsensor['time'])
-            
-            #        dropping invalid data
-                    dfsensor = dfsensor.drop(dfsensor[dfsensor.Volume15min < 0].index,axis=0)
-                    dfsensor = dfsensor.drop(dfsensor[dfsensor.AvgSpeed < 0].index,axis=0)
-            #L1Volume	L1Speed	L2Volume	L2Speed	Volume15min	AvgSpeed
-                    for lane in range(1,number_of_lanes+1):
-                        dfsensor = dfsensor.drop(dfsensor[dfsensor['L%iSpeed' %lane] > 85].index,axis=0)
-                        dfsensor = dfsensor.drop(dfsensor[dfsensor['L%iSpeed' %lane] < 0].index,axis=0)
+                            
+                        dfsensor = dfsensor.reset_index(drop=True)
                         
-                        
-                    dfsensor = dfsensor.reset_index(drop=True)
-                    
-                    dfsensor.loc[0,'interv'] =15
-            
-                    for i in range(1,len(dfsensor)):
-                        dfsensor.loc[i, 'interv'] = ((dfsensor.loc[i, 'time'] -dfsensor.loc[i-1, 'time']).value)/60/10e8
-                    
-                    
-            
-                    
-                    dfsensor['tini'] = dfsensor['time']
-                    dfsensor['tend'] = 0
-            #        df=df.drop(['# Lane Points',
-            #                    ],axis=1)
-            #        collist = []
-            ##        collist.append('index')
-            #        collist.append('time')
-            #        for i in range(1,number_of_lanes+1):
-            #            collist.append('L%iVolume'%i)
-            #            collist.append('L%iSpeed'%i)
-            #        collist.append('TotalVolume')
-            #        collist.append('AvgSpeed')
-            #        collist.append('% Observed')
-            #        df.columns=collist
-            #        
-            #        df['time'] = pd.to_datetime(df['time'])
-            #        
-            #        df.loc[0,'interv'] =5
-            #        for i in range(1,len(df)):
-            #            df.loc[i, 'interv'] = ((df.loc[i, 'time'] -df.loc[i-1, 'time']).value)/60/10e8
-                        
-            #        #aggregating in 15 minutes intervals
-            #        totalrows = len(df)/3
-            ##        print(totalrows)
-            #        dfag = pd.DataFrame()
-            #        for tagreg in range(0,int(totalrows)):
-            ##            print((tagreg * 3),(tagreg *3 +3))
-            #            dftemp = df[(tagreg * 3):(tagreg *3 +3)]
-            #            dfag.loc[tagreg,'tini'] = df.loc[tagreg*3,'time']
-            #            dfag.loc[tagreg,'tend'] = df.loc[(tagreg*3+2),'time']
-            #            
-            #            
-            #            for lane in range(1,number_of_lanes+1):
-            #                column = 'L%iVolume'%lane
-            #                dfag.loc[tagreg,column] = dftemp[column].sum()
-            #            
-            #            for lane in range(1,number_of_lanes+1):
-            #                column = 'L%iSpeed'%lane
-            #                dfag.loc[tagreg,column] = dftemp[column].mean()
-            
-                        
-            #            dfag.loc[tagreg,'% Observed'] = dftemp['% Observed'].mean()
-            #            dfag.loc[tagreg,'interv'] = dftemp['interv'].sum()
-            #            dfag.loc[tagreg,'Volume15min'] = dftemp['TotalVolume'].sum()
-            #            dfag.loc[tagreg,'AvgSpeed'] = dftemp['AvgSpeed'].mean()
-            #
-            #        dfsensor=dfsensor.append(dfag, ignore_index=True)
-                    
-            #    dfsensor['tperc']=dfsensor['TFlow']/dfsensor['AFlow']
+                        dfsensor.loc[0,'interv'] =15
                 
-                
-                
-            #    fig=plt.figure(figsize=(8,5))
-                    for i in range(1,number_of_lanes+1): 
-                        dfsensor['L%iRatio'%i]=dfsensor['L%iVolume'%i]/dfsensor['Volume15min']
-                        dfsensor['L%ihourFlow'%i]=dfsensor['L%iVolume'%i]*4
-                #Calculating density
-                        dfsensor['L%iDensity'%i] = dfsensor['L%ihourFlow'%i]/dfsensor['L%iSpeed'%i]
-                    
-                    dfsensor['Density'] = dfsensor['Volume15min']*4/dfsensor['AvgSpeed']
-                    dfsensor['Flow_vph'] = dfsensor['Volume15min']*4
-                    
-                    
-        #            fixing minnesota reversed lane positioning
-                    if config.options['lanenumbering'] != 'Left':
-                        for i in range(1,number_of_lanes+1):
-                            dfsensor['L%iVolume' %(i+10)] = dfsensor['L%iVolume' %(i)]
-                            dfsensor['L%iSpeed' %(i+10)] = dfsensor['L%iSpeed' %(i)]
-                            dfsensor['L%iRatio' %(i+10)] = dfsensor['L%iRatio' %(i)]
-                            dfsensor['L%ihourFlow' %(i+10)] = dfsensor['L%ihourFlow' %(i)]
-                            dfsensor['L%iDensity' %(i+10)] = dfsensor['L%iDensity' %(i)]
-            
-                        for i,j in zip(range(1,number_of_lanes+1),reversed(range(1,number_of_lanes+1))):
-            #                print(i,j)
-                            dfsensor['L%iVolume' %(j)] = dfsensor['L%iVolume' %(i+10)]
-                            dfsensor['L%iSpeed' %(j)] = dfsensor['L%iSpeed' %(i+10)]
-                            dfsensor['L%iRatio' %(j)] = dfsensor['L%iRatio' %(i+10)]
-                            dfsensor['L%ihourFlow' %(j)] = dfsensor['L%ihourFlow' %(i+10)]
-                            dfsensor['L%iDensity' %(j)] = dfsensor['L%iDensity' %(i+10)]
+                        for i in range(1,len(dfsensor)):
+                            dfsensor.loc[i, 'interv'] = ((dfsensor.loc[i, 'time'] -dfsensor.loc[i-1, 'time']).value)/60/10e8
                         
-                        for i in range(1,number_of_lanes+1):
-                            dfsensor=dfsensor.drop(['L%iVolume' %(i+10)],axis=1)
-                            dfsensor=dfsensor.drop(['L%iSpeed' %(i+10)],axis=1)
-                            dfsensor=dfsensor.drop(['L%iRatio' %(i+10)] ,axis=1)
-                            dfsensor=dfsensor.drop(['L%ihourFlow' %(i+10)],axis=1)
-                            dfsensor=dfsensor.drop(['L%iDensity' %(i+10)],axis=1)
-                    
-                    
-                    
-                    treated_df[stationnumber] = copy.deepcopy(dfsensor)
-            
-
-                    output = open(outpath+'\\treated_%i.pkl' %stationnumber, 'wb')
-                    pickle.dump(treated_df[stationnumber], output)
-                    output.close()
-                     
-                    treated_df[stationnumber].to_excel(outpath+'\\treated_%i.xlsx' %stationnumber)
                         
+                
+                        
+                        dfsensor['tini'] = dfsensor['time']
+                        dfsensor['tend'] = 0
+                #        df=df.drop(['# Lane Points',
+                #                    ],axis=1)
+                #        collist = []
+                ##        collist.append('index')
+                #        collist.append('time')
+                #        for i in range(1,number_of_lanes+1):
+                #            collist.append('L%iVolume'%i)
+                #            collist.append('L%iSpeed'%i)
+                #        collist.append('TotalVolume')
+                #        collist.append('AvgSpeed')
+                #        collist.append('% Observed')
+                #        df.columns=collist
+                #        
+                #        df['time'] = pd.to_datetime(df['time'])
+                #        
+                #        df.loc[0,'interv'] =5
+                #        for i in range(1,len(df)):
+                #            df.loc[i, 'interv'] = ((df.loc[i, 'time'] -df.loc[i-1, 'time']).value)/60/10e8
+                            
+                #        #aggregating in 15 minutes intervals
+                #        totalrows = len(df)/3
+                ##        print(totalrows)
+                #        dfag = pd.DataFrame()
+                #        for tagreg in range(0,int(totalrows)):
+                ##            print((tagreg * 3),(tagreg *3 +3))
+                #            dftemp = df[(tagreg * 3):(tagreg *3 +3)]
+                #            dfag.loc[tagreg,'tini'] = df.loc[tagreg*3,'time']
+                #            dfag.loc[tagreg,'tend'] = df.loc[(tagreg*3+2),'time']
+                #            
+                #            
+                #            for lane in range(1,number_of_lanes+1):
+                #                column = 'L%iVolume'%lane
+                #                dfag.loc[tagreg,column] = dftemp[column].sum()
+                #            
+                #            for lane in range(1,number_of_lanes+1):
+                #                column = 'L%iSpeed'%lane
+                #                dfag.loc[tagreg,column] = dftemp[column].mean()
+                
+                            
+                #            dfag.loc[tagreg,'% Observed'] = dftemp['% Observed'].mean()
+                #            dfag.loc[tagreg,'interv'] = dftemp['interv'].sum()
+                #            dfag.loc[tagreg,'Volume15min'] = dftemp['TotalVolume'].sum()
+                #            dfag.loc[tagreg,'AvgSpeed'] = dftemp['AvgSpeed'].mean()
+                #
+                #        dfsensor=dfsensor.append(dfag, ignore_index=True)
+                        
+                #    dfsensor['tperc']=dfsensor['TFlow']/dfsensor['AFlow']
+                    
+                    
+                    
+                #    fig=plt.figure(figsize=(8,5))
+                        for i in range(1,number_of_lanes+1): 
+                            dfsensor['L%iRatio'%i]=dfsensor['L%iVolume'%i]/dfsensor['Volume15min']
+                            dfsensor['L%ihourFlow'%i]=dfsensor['L%iVolume'%i]*4
+                    #Calculating density
+                            dfsensor['L%iDensity'%i] = dfsensor['L%ihourFlow'%i]/dfsensor['L%iSpeed'%i]
+                        
+                        dfsensor['Density'] = dfsensor['Volume15min']*4/dfsensor['AvgSpeed']
+                        dfsensor['Flow_vph'] = dfsensor['Volume15min']*4
+                        
+                        
+            #            fixing minnesota reversed lane positioning
+                        if config.options['lanenumbering'] != 'Left':
+                            for i in range(1,number_of_lanes+1):
+                                dfsensor['L%iVolume' %(i+10)] = dfsensor['L%iVolume' %(i)]
+                                dfsensor['L%iSpeed' %(i+10)] = dfsensor['L%iSpeed' %(i)]
+                                dfsensor['L%iRatio' %(i+10)] = dfsensor['L%iRatio' %(i)]
+                                dfsensor['L%ihourFlow' %(i+10)] = dfsensor['L%ihourFlow' %(i)]
+                                dfsensor['L%iDensity' %(i+10)] = dfsensor['L%iDensity' %(i)]
+                
+                            for i,j in zip(range(1,number_of_lanes+1),reversed(range(1,number_of_lanes+1))):
+                #                print(i,j)
+                                dfsensor['L%iVolume' %(j)] = dfsensor['L%iVolume' %(i+10)]
+                                dfsensor['L%iSpeed' %(j)] = dfsensor['L%iSpeed' %(i+10)]
+                                dfsensor['L%iRatio' %(j)] = dfsensor['L%iRatio' %(i+10)]
+                                dfsensor['L%ihourFlow' %(j)] = dfsensor['L%ihourFlow' %(i+10)]
+                                dfsensor['L%iDensity' %(j)] = dfsensor['L%iDensity' %(i+10)]
+                            
+                            for i in range(1,number_of_lanes+1):
+                                dfsensor=dfsensor.drop(['L%iVolume' %(i+10)],axis=1)
+                                dfsensor=dfsensor.drop(['L%iSpeed' %(i+10)],axis=1)
+                                dfsensor=dfsensor.drop(['L%iRatio' %(i+10)] ,axis=1)
+                                dfsensor=dfsensor.drop(['L%ihourFlow' %(i+10)],axis=1)
+                                dfsensor=dfsensor.drop(['L%iDensity' %(i+10)],axis=1)
+                        
+                        
+                        
+                        treated_df[stationnumber] = copy.deepcopy(dfsensor)
+                
+    
+                        output = open(outpath+'\\treated_%i.pkl' %stationnumber, 'wb')
+                        pickle.dump(treated_df[stationnumber], output)
+                        output.close()
+                         
+                        treated_df[stationnumber].to_excel(outpath+'\\treated_%i.xlsx' %stationnumber)
+                            
+                
+                    else:
+                        if segtype == 'Weaving':
+                        
+    #        elif segtype == 'Weaving':
+                            print(dlistid)
+                            if dlistid == 2:
+                                number_of_lanes = int(config.detectorinfo.loc[config.detectorinfo['Number'] == (config.options["project_sensor_id"]),'# Ramp Lanes'].iloc[0])
+                            elif dlistid == 3:
+                                number_of_lanes = int(config.detectorinfo.loc[config.detectorinfo['Number'] == (config.options["project_sensor_id"]),'#RampLanesDetec4'].iloc[0])
+    
+                            else:
+                                number_of_lanes = int(config.detectorinfo.loc[config.detectorinfo['Number'] == (config.options["project_sensor_id"]),'# Ramp Lanes'].iloc[0])
+                        
+    #                    number_of_lanes = int(config.detectorinfo.loc[config.detectorinfo['Number'] == (config.options["project_sensor_id"]),'# Ramp Lanes'].iloc[0])
+    
+    #                stationnumber = config.options['sensor_list'][0]
+                    
+                            outpath =  partialoutpath+str(config.options['project_sensor_id']).rjust(3,'0') + '\\' + str(stationnumber)
+                            dirpath = (ddir +'\\' + lanefolder + '\\' + str(config.options['project_sensor_id']).rjust(3,'0') + '\\' + str(stationnumber))
+                    
+                    
+                            os.makedirs(outpath,exist_ok=True)
+                            treated_df=dict()
+                    
+                    #    for file in next(os.walk(dirpath))[2]:
+                            dfsensor = pd.read_excel(os.path.join(dirpath,next(os.walk(dirpath))[2][0]))
+                            
+                #            dfsensor=dfsensor.drop(['# Lane Points',
+                #                        ],axis=1)
+                            collist = []
+                    #        collist.append('index')
+                            collist.append('time')
+                            
+#                            print(number_of_lanes)
+                            for i in range(1,number_of_lanes+1):
+                                collist.append('L%iVolume'%i)
+        #                        collist.append('L%iSpeed'%i)
+                            collist.append('Volume15min')
+        #                    collist.append('AvgSpeed')
+                #            collist.append('% Observed')
+                
+#                            print(list(dfsensor))
+#                            print(collist)
+                
+                            dfsensor.columns=collist
+                                    
+                            dfsensor['time'] = pd.to_datetime(dfsensor['time'])
+                    
+                    
+                    #        dfsensor = dfsensor.rename(index=str, columns={"Date": "time"})
+                            
+                            dfsensor['time'] = pd.to_datetime(dfsensor['time'])
+                    
+                    #        dropping invalid data
+                            dfsensor = dfsensor.drop(dfsensor[dfsensor.Volume15min < 0].index,axis=0)
+#                            dfsensor = dfsensor.drop(dfsensor[dfsensor.AvgSpeed < 0].index,axis=0)
+                    #L1Volume	L1Speed	L2Volume	L2Speed	Volume15min	AvgSpeed
+        #                    for lane in range(1,number_of_lanes+1):
+        #                        dfsensor = dfsensor.drop(dfsensor[dfsensor['L%iSpeed' %lane] > 85].index,axis=0)
+        #                        dfsensor = dfsensor.drop(dfsensor[dfsensor['L%iSpeed' %lane] < 0].index,axis=0)
+        #                        
+                                
+                            dfsensor = dfsensor.reset_index(drop=True)
+                            
+                            dfsensor.loc[0,'interv'] =15
+                    
+                            for i in range(1,len(dfsensor)):
+                                dfsensor.loc[i, 'interv'] = ((dfsensor.loc[i, 'time'] -dfsensor.loc[i-1, 'time']).value)/60/10e8
+                            
+                            
+                    
+                            
+                            dfsensor['tini'] = dfsensor['time']
+                            dfsensor['tend'] = 0
+                    #        df=df.drop(['# Lane Points',
+                    #                    ],axis=1)
+                    #        collist = []
+                    ##        collist.append('index')
+                    #        collist.append('time')
+                    #        for i in range(1,number_of_lanes+1):
+                    #            collist.append('L%iVolume'%i)
+                    #            collist.append('L%iSpeed'%i)
+                    #        collist.append('TotalVolume')
+                    #        collist.append('AvgSpeed')
+                    #        collist.append('% Observed')
+                    #        df.columns=collist
+                    #        
+                    #        df['time'] = pd.to_datetime(df['time'])
+                    #        
+                    #        df.loc[0,'interv'] =5
+                    #        for i in range(1,len(df)):
+                    #            df.loc[i, 'interv'] = ((df.loc[i, 'time'] -df.loc[i-1, 'time']).value)/60/10e8
+                                
+                    #        #aggregating in 15 minutes intervals
+                    #        totalrows = len(df)/3
+                    ##        print(totalrows)
+                    #        dfag = pd.DataFrame()
+                    #        for tagreg in range(0,int(totalrows)):
+                    ##            print((tagreg * 3),(tagreg *3 +3))
+                    #            dftemp = df[(tagreg * 3):(tagreg *3 +3)]
+                    #            dfag.loc[tagreg,'tini'] = df.loc[tagreg*3,'time']
+                    #            dfag.loc[tagreg,'tend'] = df.loc[(tagreg*3+2),'time']
+                    #            
+                    #            
+                    #            for lane in range(1,number_of_lanes+1):
+                    #                column = 'L%iVolume'%lane
+                    #                dfag.loc[tagreg,column] = dftemp[column].sum()
+                    #            
+                    #            for lane in range(1,number_of_lanes+1):
+                    #                column = 'L%iSpeed'%lane
+                    #                dfag.loc[tagreg,column] = dftemp[column].mean()
+                    
+                                
+                    #            dfag.loc[tagreg,'% Observed'] = dftemp['% Observed'].mean()
+                    #            dfag.loc[tagreg,'interv'] = dftemp['interv'].sum()
+                    #            dfag.loc[tagreg,'Volume15min'] = dftemp['TotalVolume'].sum()
+                    #            dfag.loc[tagreg,'AvgSpeed'] = dftemp['AvgSpeed'].mean()
+                    #
+                    #        dfsensor=dfsensor.append(dfag, ignore_index=True)
+                            
+                    #    dfsensor['tperc']=dfsensor['TFlow']/dfsensor['AFlow']
+                        
+                        
+                        
+                    #    fig=plt.figure(figsize=(8,5))
+                            for i in range(1,number_of_lanes+1): 
+                                dfsensor['L%iRatio'%i]=dfsensor['L%iVolume'%i]/dfsensor['Volume15min']
+                                dfsensor['L%ihourFlow'%i]=dfsensor['L%iVolume'%i]*4
+                        #Calculating density
+        #                        dfsensor['L%iDensity'%i] = dfsensor['L%ihourFlow'%i]/dfsensor['L%iSpeed'%i]
+                            
+        #                    dfsensor['Density'] = dfsensor['Volume15min']*4/dfsensor['AvgSpeed']
+                            dfsensor['Flow_vph'] = dfsensor['Volume15min']*4
+                            
+                            
+                #            fixing minnesota reversed lane positioning
+                            if config.options['lanenumbering'] != 'Left':
+                                for i in range(1,number_of_lanes+1):
+                                    dfsensor['L%iVolume' %(i+10)] = dfsensor['L%iVolume' %(i)]
+                                    dfsensor['L%iSpeed' %(i+10)] = dfsensor['L%iSpeed' %(i)]
+                                    dfsensor['L%iRatio' %(i+10)] = dfsensor['L%iRatio' %(i)]
+                                    dfsensor['L%ihourFlow' %(i+10)] = dfsensor['L%ihourFlow' %(i)]
+                                    dfsensor['L%iDensity' %(i+10)] = dfsensor['L%iDensity' %(i)]
+                    
+                                for i,j in zip(range(1,number_of_lanes+1),reversed(range(1,number_of_lanes+1))):
+                    #                print(i,j)
+                                    dfsensor['L%iVolume' %(j)] = dfsensor['L%iVolume' %(i+10)]
+                                    dfsensor['L%iSpeed' %(j)] = dfsensor['L%iSpeed' %(i+10)]
+                                    dfsensor['L%iRatio' %(j)] = dfsensor['L%iRatio' %(i+10)]
+                                    dfsensor['L%ihourFlow' %(j)] = dfsensor['L%ihourFlow' %(i+10)]
+                                    dfsensor['L%iDensity' %(j)] = dfsensor['L%iDensity' %(i+10)]
+                                
+                                for i in range(1,number_of_lanes+1):
+                                    dfsensor=dfsensor.drop(['L%iVolume' %(i+10)],axis=1)
+                                    dfsensor=dfsensor.drop(['L%iSpeed' %(i+10)],axis=1)
+                                    dfsensor=dfsensor.drop(['L%iRatio' %(i+10)] ,axis=1)
+                                    dfsensor=dfsensor.drop(['L%ihourFlow' %(i+10)],axis=1)
+                                    dfsensor=dfsensor.drop(['L%iDensity' %(i+10)],axis=1)
+                            
+                            
+                            
+                            treated_df[stationnumber] = copy.deepcopy(dfsensor)
+                    
+        
+                            output = open(outpath+'\\treated_%i.pkl' %stationnumber, 'wb')
+                            pickle.dump(treated_df[stationnumber], output)
+                            output.close()
+                             
+                            treated_df[stationnumber].to_excel(outpath+'\\treated_%i.xlsx' %stationnumber)
+        
+                        
+                        
+                    
+                    
